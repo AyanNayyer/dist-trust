@@ -1,34 +1,68 @@
-import { ChakraProvider, Box } from '@chakra-ui/react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { WalletProvider } from '../contexts/WalletContext';
-import { IdentityProvider } from '../contexts/IdentityContext';
-import Navbar from '../components/common/Navbar';
-import Home from '../pages/Home';
-import Profile from '../pages/Profile';
-import CreateService from '../pages/CreateService';
-import Dashboard from '../pages/Dashboard';
-import NotFound from '../pages/NotFound';
+import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
+
+const Navbar = () => (
+  <nav className="navbar">
+    <div className="navbar-container container">
+      <h1>Creator Services</h1>
+      <div className="navbar-links">
+        <Link to="/">Home</Link>
+        <Link to="/dashboard">Dashboard</Link>
+        <Link to="/create-service">Create Service</Link>
+        <Link to="/profile">Profile</Link>
+      </div>
+      <button className="btn">Connect Wallet</button>
+    </div>
+  </nav>
+);
+
+const Home = () => (
+  <div className="container">
+    <h1>Decentralized Creator Services</h1>
+    <p>Connect, collaborate, and transact securely with creators.</p>
+    <button className="btn">Get Started</button>
+  </div>
+);
+
+const Dashboard = () => (
+  <div className="container">
+    <h1>Dashboard</h1>
+    <p>Your dashboard content will appear here.</p>
+  </div>
+);
+
+const Profile = () => (
+  <div className="container">
+    <h1>Profile</h1>
+    <p>Your profile information will appear here.</p>
+  </div>
+);
+
+const CreateService = () => (
+  <div className="container">
+    <h1>Create Service</h1>
+    <p>Service creation form will appear here.</p>
+  </div>
+);
+
+const NotFound = () => (
+  <div className="container">
+    <h1>404 - Not Found</h1>
+    <p>The page you're looking for doesn't exist.</p>
+  </div>
+);
 
 function App() {
   return (
-    <ChakraProvider>
-      <WalletProvider>
-        <IdentityProvider>
-          <Router>
-            <Navbar />
-            <Box as="main" p={4} maxW="container.xl" mx="auto">
-              <Routes>
-                <Route path="/" element={<Home />} />
-                <Route path="/profile" element={<Profile />} />
-                <Route path="/create-service" element={<CreateService />} />
-                <Route path="/dashboard" element={<Dashboard />} />
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </Box>
-          </Router>
-        </IdentityProvider>
-      </WalletProvider>
-    </ChakraProvider>
+    <Router>
+      <Navbar />
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/profile" element={<Profile />} />
+        <Route path="/create-service" element={<CreateService />} />
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </Router>
   );
 }
 
