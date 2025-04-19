@@ -1,64 +1,37 @@
-import { Button, Text } from '@chakra-ui/react';
-import { useToast } from '@chakra-ui/toast';
-import { FaWallet } from 'react-icons/fa';
-import { useWallet } from '../../hooks/useWallet';
-import { shortenAddress } from '../../utils/formatters';
+// src/components/wallet/ConnectWallet.tsx
+import React from 'react';
+import { useWallet } from '../../contexts/WalletContext';
 
 const ConnectWallet = () => {
-  const { account, connectWallet, disconnectWallet, isConnecting, error } = useWallet();
-  const toast = useToast();
+  const { account, isConnected, isConnecting, connectWallet, disconnectWallet, error } = useWallet();
 
-  const handleConnect = async () => {
-    try {
-      await connectWallet();
-    } catch (err: any) {
-      toast({
-        title: 'Connection Error',
-        description: err.message || 'Failed to connect wallet',
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
-      });
-    }
+  const shortenAddress = (address: string) => {
+    return `${address.substring(0, 6)}...${address.substring(address.length - 4)}`;
   };
 
-  if (error) {
-    return (
-      <div className="flex flex-col items-center">
-        <Text color="red.500" mb={2}>{error}</Text>
-        <Button colorScheme="blue" onClick={handleConnect}>
-          Try Again
-        </Button>
-      </div>
-    );
-  }
-
-  if (account) {
-    return (
-      <div className="flex items-center">
-        <Button
-          colorScheme="teal"
-          variant="outline"
-          leftIcon={<FaWallet />}
-          onClick={disconnectWallet}
-          className="mr-2"
-        >
-          {shortenAddress(account)}
-        </Button>
-      </div>
-    );
-  }
-
   return (
-    <Button
-      colorScheme="blue"
-      leftIcon={<FaWallet />}
-      onClick={handleConnect}
-      isLoading={isConnecting}
-      loadingText="Connecting"
-    >
-      Connect Wallet
-    </Button>
+    <div>
+      {isConnected ? (
+        <div className="wallet-connected">
+          <span className="wallet-address">{shortenAddress(account!)}</span>
+          <button 
+            className="btn btn-disconnect" 
+            onClick={disconnectWallet}
+          >
+            Disconnect
+          </button>
+        </div>
+      ) : (
+        <button 
+          className="btn btn-connect" 
+          onClick={connectWallet} 
+          disabled={isConnecting}
+        >
+          {isConnecting ? 'Connecting...' : 'Connect Wallet'}
+        </button>
+      )}
+      {error && <div className="wallet-error">{error}</div>}
+    </div>
   );
 };
 

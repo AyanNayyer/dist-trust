@@ -1,21 +1,8 @@
+import React from 'react';
 import { useState } from 'react';
-import {
-  Box,
-  Button,
-  Input,
-  Textarea,
-  VStack,
-  Heading,
-  Text,
-  Select,
-  HStack,
-  Badge
-} from '@chakra-ui/react';
-import { FormControl, FormLabel, FormErrorMessage, FormHelperText } from '@chakra-ui/form-control';
-import { useToast } from '@chakra-ui/toast';
-import { useWallet } from '../../hooks/useWallet';
-import { useIdentity } from '../../hooks/useIdentity';
+import { useWallet } from '../../contexts/WalletContext';
 
+// Categories for the dropdown
 const categories = [
   'Design',
   'Development',
@@ -27,10 +14,36 @@ const categories = [
   'Art'
 ];
 
+// Mock identity functionality since we removed the Chakra UI dependencies
+const useIdentity = () => {
+  const [identity, setIdentity] = useState({ did: null, isVerified: false });
+  const [isCreatingIdentity, setIsCreatingIdentity] = useState(false);
+  const [isVerifyingIdentity, setIsVerifyingIdentity] = useState(false);
+
+  const createIdentity = async () => {
+    setIsCreatingIdentity(true);
+    // Simulate API call
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    setIdentity({ did: "did:ethr:0x" + Math.random().toString(16).slice(2, 10), isVerified: false });
+    setIsCreatingIdentity(false);
+    return true;
+  };
+
+  const verifyIdentity = async () => {
+    setIsVerifyingIdentity(true);
+    // Simulate API call
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    setIdentity(prev => ({ ...prev, isVerified: true }));
+    setIsVerifyingIdentity(false);
+    return true;
+  };
+
+  return { identity, createIdentity, isCreatingIdentity, verifyIdentity, isVerifyingIdentity };
+};
+
 const ProfileForm = () => {
   const { isConnected } = useWallet();
   const { identity, createIdentity, isCreatingIdentity, verifyIdentity, isVerifyingIdentity } = useIdentity();
-  const toast = useToast();
   
   const [formData, setFormData] = useState({
     name: '',
@@ -41,7 +54,19 @@ const ProfileForm = () => {
     contactEmail: ''
   });
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+  const [toast, setToast] = useState({ 
+    show: false, 
+    title: '', 
+    description: '', 
+    status: '' 
+  });
+
+  const showToast = (title, description, status) => {
+    setToast({ show: true, title, description, status });
+    setTimeout(() => setToast({ show: false, title: '', description: '', status: '' }), 5000);
+  };
+
+  const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prevState => ({
       ...prevState,
@@ -52,199 +77,205 @@ const ProfileForm = () => {
   const handleCreateIdentity = async () => {
     try {
       await createIdentity();
-      toast({
-        title: 'Identity Created',
-        description: 'Your decentralized identity has been created successfully.',
-        status: 'success',
-        duration: 5000,
-        isClosable: true,
-      });
-    } catch (error: any) {
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to create identity',
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
-      });
+      showToast(
+        'Identity Created',
+        'Your decentralized identity has been created successfully.',
+        'success'
+      );
+    } catch (error) {
+      showToast(
+        'Error',
+        error.message || 'Failed to create identity',
+        'error'
+      );
     }
   };
 
   const handleVerifyIdentity = async () => {
     try {
       await verifyIdentity();
-      toast({
-        title: 'Identity Verified',
-        description: 'Your identity has been verified successfully.',
-        status: 'success',
-        duration: 5000,
-        isClosable: true,
-      });
-    } catch (error: any) {
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to verify identity',
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
-      });
+      showToast(
+        'Identity Verified',
+        'Your identity has been verified successfully.',
+        'success'
+      );
+    } catch (error) {
+      showToast(
+        'Error',
+        error.message || 'Failed to verify identity',
+        'error'
+      );
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
     
     if (!identity.did) {
-      toast({
-        title: 'Identity Required',
-        description: 'Please create a decentralized identity first.',
-        status: 'warning',
-        duration: 5000,
-        isClosable: true,
-      });
+      showToast(
+        'Identity Required',
+        'Please create a decentralized identity first.',
+        'warning'
+      );
       return;
     }
     
     // In a real implementation, this would save profile data to a database or IPFS
-    // and potentially register the profile on the blockchain
     console.log('Submitting profile data:', { ...formData, did: identity.did });
     
-    toast({
-      title: 'Profile Saved',
-      description: 'Your creator profile has been saved successfully.',
-      status: 'success',
-      duration: 5000,
-      isClosable: true,
-    });
+    showToast(
+      'Profile Saved',
+      'Your creator profile has been saved successfully.',
+      'success'
+    );
   };
 
   if (!isConnected) {
     return (
-      <Box p={5} shadow="md" borderWidth="1px" borderRadius="md">
-        <Text>Please connect your wallet to create a profile.</Text>
-      </Box>
+      <div className="form-container">
+        <p>Please connect your wallet to create a profile.</p>
+      </div>
     );
   }
 
   return (
-    <Box p={5} shadow="md" borderWidth="1px" borderRadius="md">
-      <Heading as="h2" size="lg" mb={6}>Create Creator Profile</Heading>
+    <div className="form-container">
+      <h2 className="form-title">Create Creator Profile</h2>
       
-      <Box mb={6}>
-        <Heading as="h3" size="md" mb={2}>Identity Verification</Heading>
+      {/* Toast message */}
+      {toast.show && (
+        <div className={`toast toast-${toast.status}`}>
+          <strong>{toast.title}</strong>
+          <p>{toast.description}</p>
+        </div>
+      )}
+      
+      <div className="identity-section">
+        <h3>Identity Verification</h3>
         
         {identity.did ? (
-          <Box p={3} bg="gray.50" borderRadius="md">
-            <Text mb={2}>DID: {identity.did}</Text>
-            <HStack>
-              <Badge colorScheme={identity.isVerified ? "green" : "yellow"}>
+          <div className="identity-info">
+            <p>DID: {identity.did}</p>
+            <div className="identity-status">
+              <span className={`badge ${identity.isVerified ? "badge-success" : "badge-warning"}`}>
                 {identity.isVerified ? "Verified" : "Unverified"}
-              </Badge>
+              </span>
               
               {!identity.isVerified && (
-                <Button 
-                  size="sm" 
-                  colorScheme="teal" 
+                <button 
+                  className="btn btn-small btn-verify" 
                   onClick={handleVerifyIdentity}
-                  isLoading={isVerifyingIdentity}
+                  disabled={isVerifyingIdentity}
                 >
-                  Verify Identity
-                </Button>
+                  {isVerifyingIdentity ? 'Verifying...' : 'Verify Identity'}
+                </button>
               )}
-            </HStack>
-          </Box>
+            </div>
+          </div>
         ) : (
-          <Button
-            colorScheme="blue"
+          <button
+            className="btn btn-primary"
             onClick={handleCreateIdentity}
-            isLoading={isCreatingIdentity}
-            mb={3}
+            disabled={isCreatingIdentity}
           >
-            Create Decentralized Identity
-          </Button>
+            {isCreatingIdentity ? 'Creating...' : 'Create Decentralized Identity'}
+          </button>
         )}
-      </Box>
+      </div>
       
       <form onSubmit={handleSubmit}>
-        <VStack spacing={4} align="flex-start">
-          <FormControl isRequired>
-            <FormLabel>Full Name</FormLabel>
-            <Input
-              name="name"
-              value={formData.name}
-              onChange={handleChange}
-              placeholder="Your name"
-            />
-          </FormControl>
-          
-          <FormControl isRequired>
-            <FormLabel>Professional Title</FormLabel>
-            <Input
-              name="title"
-              value={formData.title}
-              onChange={handleChange}
-              placeholder="e.g. Graphic Designer, Developer, Writer"
-            />
-          </FormControl>
-          
-          <FormControl isRequired>
-            <FormLabel>Description</FormLabel>
-            <Textarea
-              name="description"
-              value={formData.description}
-              onChange={handleChange}
-              placeholder="Tell clients about yourself and your services"
-              rows={4}
-            />
-          </FormControl>
-          
-          <FormControl isRequired>
-            <FormLabel>Primary Category</FormLabel>
-            <Select 
-              name="category" 
-              value={formData.category} 
-              onChange={handleChange}
-              placeholder="Select category"
-            >
-              {categories.map(category => (
-                <option key={category} value={category}>{category}</option>
-              ))}
-            </Select>
-          </FormControl>
-          
-          <FormControl isRequired>
-            <FormLabel>Skills (comma separated)</FormLabel>
-            <Input
-              name="skills"
-              value={formData.skills}
-              onChange={handleChange}
-              placeholder="e.g. React, Solidity, Web Design"
-            />
-          </FormControl>
-          
-          <FormControl>
-            <FormLabel>Contact Email</FormLabel>
-            <Input
-              name="contactEmail"
-              type="email"
-              value={formData.contactEmail}
-              onChange={handleChange}
-              placeholder="Your email address"
-            />
-          </FormControl>
-          
-          <Button 
-            mt={4} 
-            colorScheme="teal" 
-            type="submit" 
-            isDisabled={!identity.did}
-            width="100%"
+        <div className="form-group">
+          <label htmlFor="name">Full Name *</label>
+          <input
+            id="name"
+            name="name"
+            value={formData.name}
+            onChange={handleChange}
+            placeholder="Your name"
+            required
+            className="form-input"
+          />
+        </div>
+        
+        <div className="form-group">
+          <label htmlFor="title">Professional Title *</label>
+          <input
+            id="title"
+            name="title"
+            value={formData.title}
+            onChange={handleChange}
+            placeholder="e.g. Graphic Designer, Developer, Writer"
+            required
+            className="form-input"
+          />
+        </div>
+        
+        <div className="form-group">
+          <label htmlFor="description">Description *</label>
+          <textarea
+            id="description"
+            name="description"
+            value={formData.description}
+            onChange={handleChange}
+            placeholder="Tell clients about yourself and your services"
+            rows={4}
+            required
+            className="form-textarea"
+          />
+        </div>
+        
+        <div className="form-group">
+          <label htmlFor="category">Primary Category *</label>
+          <select 
+            id="category"
+            name="category" 
+            value={formData.category} 
+            onChange={handleChange}
+            required
+            className="form-select"
           >
-            Save Profile
-          </Button>
-        </VStack>
+            <option value="" disabled>Select category</option>
+            {categories.map(category => (
+              <option key={category} value={category}>{category}</option>
+            ))}
+          </select>
+        </div>
+        
+        <div className="form-group">
+          <label htmlFor="skills">Skills (comma separated) *</label>
+          <input
+            id="skills"
+            name="skills"
+            value={formData.skills}
+            onChange={handleChange}
+            placeholder="e.g. React, Solidity, Web Design"
+            required
+            className="form-input"
+          />
+        </div>
+        
+        <div className="form-group">
+          <label htmlFor="contactEmail">Contact Email</label>
+          <input
+            id="contactEmail"
+            name="contactEmail"
+            type="email"
+            value={formData.contactEmail}
+            onChange={handleChange}
+            placeholder="Your email address"
+            className="form-input"
+          />
+        </div>
+        
+        <button 
+          className="btn btn-submit" 
+          type="submit" 
+          disabled={!identity.did}
+        >
+          Save Profile
+        </button>
       </form>
-    </Box>
+    </div>
   );
 };
 

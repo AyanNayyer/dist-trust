@@ -1,6 +1,5 @@
-import { Box, Heading, Text, VStack, Spinner, Alert } from "@chakra-ui/react";
-import { AlertIcon } from '@chakra-ui/alert';
-import { useWallet } from "../hooks/useWallet";
+import React from 'react';
+import { useWallet } from "../contexts/WalletContext";
 import ProfileForm from "../components/creator/ProfileForm";
 
 const Dashboard = () => {
@@ -8,27 +7,27 @@ const Dashboard = () => {
 
   if (!isConnected) {
     return (
-      <Box mt={10}>
-        <Alert status="warning">
-          <AlertIcon />
+      <div className="dashboard-container">
+        <div className="alert alert-warning">
+          <span className="alert-icon">⚠️</span>
           Please connect your wallet to access the dashboard.
-        </Alert>
-      </Box>
+        </div>
+      </div>
     );
   }
 
   return (
-    <Box maxW="4xl" mx="auto" mt={10} p={6}>
-      <Heading mb={6}>Dashboard</Heading>
-      <VStack align="stretch" spacing={8}>
-        <Box>
-          <Text fontWeight="bold">Your Wallet Address:</Text>
-          <Text>{account}</Text>
-        </Box>
+    <div className="dashboard-container">
+      <h1 className="dashboard-title">Dashboard</h1>
+      <div className="dashboard-content">
+        <div className="wallet-info">
+          <p className="wallet-label">Your Wallet Address:</p>
+          <p className="wallet-address">{account}</p>
+        </div>
         <ProfileForm />
         {/* Add more dashboard widgets/components here */}
-      </VStack>
-    </Box>
+      </div>
+    </div>
   );
 };
 

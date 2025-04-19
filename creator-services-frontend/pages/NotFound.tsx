@@ -1,14 +1,20 @@
-import { Box, Heading, Text, Button } from "@chakra-ui/react";
-import { Link as RouterLink } from "react-router-dom";
+import { Link } from 'react-router-dom';
 
-const NotFound = () => (
-  <Box textAlign="center" py={20}>
-    <Heading size="2xl" mb={4}>404</Heading>
-    <Text fontSize="xl" mb={8}>Page Not Found</Text>
-    <Button as={RouterLink} to="/" colorScheme="blue">
-      Go Home
-    </Button>
-  </Box>
-);
+const NotFound = () => {
+  return (
+    <div className="not-found-container">
+      <div className="not-found-content">
+        <h1 className="not-found-title">404</h1>
+        <h2 className="not-found-subtitle">Page Not Found</h2>
+        <p className="not-found-message">
+          The page you are looking for doesn't exist or has been moved.
+        </p>
+        <Link to="/" className="btn btn-primary">
+          Return to Home
+        </Link>
+      </div>
+    </div>
+  );
+};
 
 export default NotFound;

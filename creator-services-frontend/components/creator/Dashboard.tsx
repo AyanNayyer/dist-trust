@@ -1,36 +1,41 @@
 import { useEffect, useState } from 'react';
-import {
-  Box,
-  Heading,
-  Tabs,
-  TabList,
-  TabPanels,
-  Tab,
-  TabPanel,
-  Grid,
-  Stat,
-  StatLabel,
-  StatNumber,
-  StatHelpText,
-  HStack,
-  VStack,
-  Badge,
-  Text,
-  Card,
-  CardHeader,
-  CardBody,
-  Button,
-  useColorModeValue,
-  Alert,
-  AlertIcon,
-  Spinner,
-  Center
-} from '@chakra-ui/react';
-import { useWallet } from '../hooks/useWallet';
-import { useIdentity } from '../hooks/useIdentity';
-import { useEscrow } from '../hooks/useEscrow';
-import { useReputation } from '../hooks/useReputation';
-import ProfileForm from '../components/creator/ProfileForm';
+import { useWallet } from '../../contexts/WalletContext';
+import ProfileForm from '../../components/creator/ProfileForm';
+
+// Mock hooks for development
+const useIdentity = () => {
+  return {
+    identity: {
+      did: "did:ethr:0x123456789abcdef",
+      isVerified: true
+    }
+  };
+};
+
+const useReputation = () => {
+  return {
+    getRatingDetails: async (address) => {
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 800));
+      return { average: 4.5, total: 45, count: 10 };
+    }
+  };
+};
+
+const useEscrow = () => {
+  return {
+    getProject: async (id) => {
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 300));
+      return {
+        client: "0x9876543210fedcba",
+        provider: "0x1234567890abcdef", // This should match the connected account
+        amount: "0.5",
+        status: id % 2 === 0 // Alternate between completed and in progress
+      };
+    }
+  };
+};
 
 const Dashboard = () => {
   const { isConnected, account } = useWallet();
@@ -38,12 +43,10 @@ const Dashboard = () => {
   const { getRatingDetails } = useReputation();
   const { getProject } = useEscrow();
   
-  const [projects, setProjects] = useState<any[]>([]);
-  const [ratingDetails, setRatingDetails] = useState<{ average: number; total: number; count: number } | null>(null);
+  const [projects, setProjects] = useState([]);
+  const [ratingDetails, setRatingDetails] = useState(null);
   const [loading, setLoading] = useState(false);
-  
-  const cardBg = useColorModeValue('white', 'gray.700');
-  const statsBg = useColorModeValue('blue.50', 'blue.900');
+  const [activeTab, setActiveTab] = useState(0);
   
   useEffect(() => {
     const loadData = async () => {
@@ -54,12 +57,13 @@ const Dashboard = () => {
           const ratingData = await getRatingDetails(account);
           setRatingDetails(ratingData);
           
-          // Load projects (mock implementation - replace with actual contract calls)
+          // Load projects (mock implementation)
           const tempProjects = [];
           for (let i = 0; i < 3; i++) {
             const project = await getProject(i);
             if (project) tempProjects.push(project);
           }
+          // Filter projects where the user is the provider
           setProjects(tempProjects.filter(p => p.provider === account));
         } catch (error) {
           console.error('Error loading data:', error);
@@ -74,93 +78,163 @@ const Dashboard = () => {
   
   if (!isConnected) {
     return (
-      <Box p={5}>
-        <Alert status="warning">
-          <AlertIcon />
-          Please connect your wallet to view your dashboard.
-        </Alert>
-      </Box>
+      <div className="alert alert-warning">
+        Please connect your wallet to view your dashboard.
+      </div>
     );
   }
   
   return (
-    <Box p={4}>
-      <Heading as="h1" size="xl" mb={6}>Creator Dashboard</Heading>
+    <div className="dashboard-container">
+      <h1 className="dashboard-title">Creator Dashboard</h1>
       
       {/* Identity Status */}
-      <Box mb={6} p={4} borderWidth="1px" borderRadius="lg" bg={cardBg}>
-        <Heading as="h2" size="md" mb={3}>Identity Status</Heading>
+      <div className="dashboard-card identity-card">
+        <h2 className="card-title">Identity Status</h2>
         {identity.did ? (
-          <VStack align="start" spacing={2}>
-            <HStack>
-              <Text fontWeight="bold">DID:</Text>
-              <Text>{`${identity.did.substring(0, 20)}...`}</Text>
-            </HStack>
-            <HStack>
-              <Text fontWeight="bold">Status:</Text>
-              <Badge colorScheme={identity.isVerified ? "green" : "yellow"}>
+          <div className="identity-info">
+            <div className="info-row">
+              <span className="info-label">DID:</span>
+              <span className="info-value">{`${identity.did.substring(0, 20)}...`}</span>
+            </div>
+            <div className="info-row">
+              <span className="info-label">Status:</span>
+              <span className={`badge ${identity.isVerified ? "badge-success" : "badge-warning"}`}>
                 {identity.isVerified ? "Verified" : "Unverified"}
-              </Badge>
-            </HStack>
-          </VStack>
+              </span>
+            </div>
+          </div>
         ) : (
-          <Alert status="info">
-            <AlertIcon />
+          <div className="alert alert-info">
             Create an identity in the Profile tab to start offering services
-          </Alert>
+          </div>
         )}
-      </Box>
+      </div>
       
       {/* Stats Overview */}
-      <Grid templateColumns={{ base: "1fr", md: "repeat(3, 1fr)" }} gap={6} mb={6}>
-        <Stat p={4} borderRadius="lg" bg={statsBg}>
-          <StatLabel>Active Projects</StatLabel>
-          <StatNumber>{projects.length}</StatNumber>
-          <StatHelpText>Currently in progress</StatHelpText>
-        </Stat>
+      <div className="stats-grid">
+        <div className="stat-card">
+          <div className="stat-label">Active Projects</div>
+          <div className="stat-number">{projects.length}</div>
+          <div className="stat-help">Currently in progress</div>
+        </div>
         
-        <Stat p={4} borderRadius="lg" bg={statsBg}>
-          <StatLabel>Total Earnings</StatNumber>
-          <StatNumber>
+        <div className="stat-card">
+          <div className="stat-label">Total Earnings</div>
+          <div className="stat-number">
             {projects
               .filter(p => p.status)
               .reduce((sum, p) => sum + parseFloat(p.amount), 0)
               .toFixed(2)} ETH
-          </StatNumber>
-          <StatHelpText>Completed projects</StatHelpText>
-        </Stat>
+          </div>
+          <div className="stat-help">Completed projects</div>
+        </div>
         
-        <Stat p={4} borderRadius="lg" bg={statsBg}>
-          <StatLabel>Average Rating</StatLabel>
-          <StatNumber>
-            {loading ? <Spinner size="sm" /> : ratingDetails?.average ?? 'N/A'}
-          </StatNumber>
-          <StatHelpText>
+        <div className="stat-card">
+          <div className="stat-label">Average Rating</div>
+          <div className="stat-number">
+            {loading ? <div className="spinner"></div> : ratingDetails?.average ?? 'N/A'}
+          </div>
+          <div className="stat-help">
             {ratingDetails ? `From ${ratingDetails.count} reviews` : 'No reviews yet'}
-          </StatHelpText>
-        </Stat>
-      </Grid>
+          </div>
+        </div>
+      </div>
       
       {/* Main Dashboard Tabs */}
-      <Tabs colorScheme="blue" variant="enclosed">
-        <TabList>
-          <Tab>Active Projects</Tab>
-          <Tab>Reputation</Tab>
-          <Tab>Profile</Tab>
-        </TabList>
+      <div className="tabs-container">
+        <div className="tabs-header">
+          <button 
+            className={`tab-button ${activeTab === 0 ? 'active' : ''}`}
+            onClick={() => setActiveTab(0)}
+          >
+            Active Projects
+          </button>
+          <button 
+            className={`tab-button ${activeTab === 1 ? 'active' : ''}`}
+            onClick={() => setActiveTab(1)}
+          >
+            Reputation
+          </button>
+          <button 
+            className={`tab-button ${activeTab === 2 ? 'active' : ''}`}
+            onClick={() => setActiveTab(2)}
+          >
+            Profile
+          </button>
+        </div>
         
-        <TabPanels>
+        <div className="tab-content">
           {/* Active Projects Tab */}
-          <TabPanel>
-            <VStack spacing={4} align="stretch">
+          {activeTab === 0 && (
+            <div className="tab-panel">
               {projects.length > 0 ? (
-                projects.map((project, index) => (
-                  <Card key={index} borderWidth="1px" borderRadius="lg">
-                    <CardHeader bg="gray.50">
-                      <Heading size="md">Project #{index}</Heading>
-                    </CardHeader>
-                    <CardBody>
-                      <VStack align="start" spacing={2}>
-                        <Text>Client: {project.client}</Text>
-                        <Text>Amount: {project.amount} ETH</Text>
-                        <Text>Status: {project.status ? 'Completed' : 'In Progress'}</Text>
+                <div className="projects-list">
+                  {projects.map((project, index) => (
+                    <div key={index} className="project-card">
+                      <div className="project-header">
+                        <h3>Project #{index}</h3>
+                      </div>
+                      <div className="project-body">
+                        <div className="project-info">
+                          <p><strong>Client:</strong> {project.client}</p>
+                          <p><strong>Amount:</strong> {project.amount} ETH</p>
+                          <p><strong>Status:</strong> {project.status ? 'Completed' : 'In Progress'}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="empty-state">
+                  <p>No active projects found</p>
+                </div>
+              )}
+            </div>
+          )}
+          
+          {/* Reputation Tab */}
+          {activeTab === 1 && (
+            <div className="tab-panel">
+              {ratingDetails ? (
+                <div className="reputation-card">
+                  <div className="reputation-stat">
+                    <div className="stat-label">Average Rating</div>
+                    <div className="stat-number">{ratingDetails.average}/5</div>
+                  </div>
+                  <div className="reputation-stat">
+                    <div className="stat-label">Total Ratings</div>
+                    <div className="stat-number">{ratingDetails.count}</div>
+                  </div>
+                  <div className="rating-stars">
+                    {[1, 2, 3, 4, 5].map(star => (
+                      <span 
+                        key={star} 
+                        className={`star ${star <= Math.round(ratingDetails.average) ? 'filled' : ''}`}
+                      >
+                        ★
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="alert alert-info">
+                  No reputation data available yet
+                </div>
+              )}
+            </div>
+          )}
+          
+          {/* Profile Tab */}
+          {activeTab === 2 && (
+            <div className="tab-panel">
+              <ProfileForm />
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default Dashboard;
