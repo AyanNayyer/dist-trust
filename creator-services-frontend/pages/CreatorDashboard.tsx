@@ -5,87 +5,105 @@ import { useEscrow } from '../hooks/useEscrow';
 
 // Project status enum to match your smart contract
 const ProjectStatus = {
-  NotStarted: 0,
-  InProgress: 1,
-  Completed: 2,
-  Scrapped: 3
+  Pending: 0,
+  Approved: 1,
+  Rejected: 2,
+  InProgress: 3,
+  Completed: 4
 };
 
 const CreatorDashboard = () => {
   const { account, isConnected } = useWallet();
   const { getProject, getProjectsCount, creatorApproval, markProjectCompleted } = useEscrow();
 
-  
   const [pendingProjects, setPendingProjects] = useState([]);
   const [activeProjects, setActiveProjects] = useState([]);
   const [completedProjects, setCompletedProjects] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [approvalAmount, setApprovalAmount] = useState({});
-  const [debugInfo, setDebugInfo] = useState(null);
+  const [projectsLoaded, setProjectsLoaded] = useState(false);
 
   useEffect(() => {
+    // Skip if already loaded or no account
+    if (projectsLoaded || !account) return;
+    
     const fetchProjects = async () => {
-      if (!account) return;
       setLoading(true);
       setError(null);
-  
+    
       try {
+        console.log("Fetching projects for creator:", account);
+        
         const count = await getProjectsCount();
+        console.log("Total projects count:", count);
+        
         const pending = [];
         const active = [];
         const completed = [];
+        
         for (let i = 0; i < count; i++) {
-          const project = await getProject(i);
-          if (!project) continue;
-          if (project.provider.toLowerCase() !== account.toLowerCase()) continue;
-  
-          // ProjectStatus: 0=Pending, 1=Approved, 2=Rejected, 3=InProgress, 4=Completed
-          if (project.status === 0) {
-            pending.push({ id: i, ...project });
-          } else if (project.status === 1) {
-            active.push({ id: i, ...project });
-          } else if (project.status === 4) {
-            completed.push({ id: i, ...project });
+          try {
+            console.log(`Fetching project ${i}...`);
+            const project = await getProject(i);
+            console.log(`Project ${i}:`, project);
+            
+            if (!project) {
+              console.log(`Project ${i} is null, skipping`);
+              continue;
+            }
+            
+            if (project.provider.toLowerCase() !== account.toLowerCase()) {
+              console.log(`Project ${i} provider (${project.provider}) doesn't match account (${account}), skipping`);
+              continue;
+            }
+    
+            // Add to appropriate array based on status
+            if (project.status === 0) { // Pending
+              pending.push(project);
+            } else if (project.status === 1 || project.status === 3) { // Approved or InProgress
+              active.push(project);
+            } else if (project.status === 4) { // Completed
+              completed.push(project);
+            }
+          } catch (err) {
+            console.error(`Error processing project ${i}:`, err);
           }
         }
+        
+        console.log("Projects found:", { pending, active, completed });
         setPendingProjects(pending);
         setActiveProjects(active);
         setCompletedProjects(completed);
+        
+        // Mark as loaded to prevent re-fetching
+        setProjectsLoaded(true);
       } catch (err) {
-        setError("Failed to load projects");
+        console.error("Failed to load projects:", err);
+        setError("Failed to load projects: " + (err.message || String(err)));
       } finally {
         setLoading(false);
       }
     };
-  
+    
     fetchProjects();
-  }, [account, getProject, getProjectsCount]);
-  
-  
+  }, [account, getProject, getProjectsCount, projectsLoaded]);
 
-  const handleApprovalChange = (projectId, value) => {
-    setApprovalAmount(prev => ({ ...prev, [projectId]: value }));
+  const handleRefresh = () => {
+    setProjectsLoaded(false); // This will trigger the useEffect to run again
   };
 
   const handleApprove = async (projectId) => {
-    const amount = approvalAmount[projectId];
-    if (!amount || isNaN(amount) || Number(amount) <= 0) {
-      alert('Please enter a valid amount');
-      return;
-    }
-    
     try {
-      await creatorApproval(projectId, true, amount);
-      alert('Project approved successfully!');
+      await creatorApproval(projectId, true);
+      alert('Project accepted successfully!');
       
       // Remove from pending list
       setPendingProjects(prev => prev.filter(p => p.id !== projectId));
       
       // Refresh the project lists
       const updatedProject = await getProject(projectId);
-      if (updatedProject && updatedProject.status === ProjectStatus.InProgress) {
-        setActiveProjects(prev => [...prev, { id: projectId, ...updatedProject }]);
+      if (updatedProject && (updatedProject.status === 1 || updatedProject.status === 3)) {
+        setActiveProjects(prev => [...prev, updatedProject]);
       }
     } catch (err) {
       console.error("Error approving project:", err);
@@ -95,7 +113,7 @@ const CreatorDashboard = () => {
 
   const handleReject = async (projectId) => {
     try {
-      await creatorApproval(projectId, false, "0");
+      await creatorApproval(projectId, false);
       alert('Project rejected successfully!');
       
       // Remove from pending list
@@ -137,14 +155,15 @@ const CreatorDashboard = () => {
     <div className="dashboard-container">
       <h1 className="dashboard-title">Creator Dashboard</h1>
       
-      {/* Debug info - remove in production */}
-      {debugInfo && (
-        <div className="debug-info">
-          <p>Projects checked: {debugInfo.checked}</p>
-          <p>Projects found for this account: {debugInfo.found}</p>
-          <p>Your address: {account}</p>
-        </div>
-      )}
+      <div className="dashboard-actions">
+        <button 
+          className="btn btn-primary" 
+          onClick={handleRefresh} 
+          disabled={loading}
+        >
+          {loading ? 'Loading...' : 'Refresh Projects'}
+        </button>
+      </div>
       
       {loading && (
         <div className="loading-indicator">
@@ -174,43 +193,32 @@ const CreatorDashboard = () => {
           {pendingProjects.map(project => (
             <div key={project.id} className="project-card">
               <div className="project-header">
-                <h3>Project #{project.id}</h3>
+                <h3>{project.title || `Project #${project.id}`}</h3>
                 <span className="status-badge pending">Pending Approval</span>
               </div>
-              
               <div className="project-body">
                 <p><strong>Client:</strong> {project.client}</p>
-                <p><strong>Initial Amount:</strong> {project.amount} ETH</p>
+                <p><strong>Proposed Amount:</strong> {project.amount} ETH</p>
+                {project.description && (
+                  <p><strong>Description:</strong> {project.description}</p>
+                )}
+                {project.deadline && (
+                  <p><strong>Deadline:</strong> {new Date(project.deadline * 1000).toLocaleDateString()}</p>
+                )}
                 
-                <div className="approval-form">
-                  <div className="form-group">
-                    <label htmlFor={`amount-${project.id}`}>Your Price (ETH):</label>
-                    <input
-                      id={`amount-${project.id}`}
-                      type="number"
-                      className="form-input"
-                      value={approvalAmount[project.id] || ''}
-                      onChange={e => handleApprovalChange(project.id, e.target.value)}
-                      min="0"
-                      step="0.01"
-                      placeholder="Enter your price"
-                    />
-                  </div>
-                  
-                  <div className="button-group">
-                    <button 
-                      className="btn btn-primary" 
-                      onClick={() => handleApprove(project.id)}
-                    >
-                      Approve Project
-                    </button>
-                    <button 
-                      className="btn btn-danger" 
-                      onClick={() => handleReject(project.id)}
-                    >
-                      Reject Project
-                    </button>
-                  </div>
+                <div className="button-group">
+                  <button 
+                    className="btn btn-primary" 
+                    onClick={() => handleApprove(project.id)}
+                  >
+                    Accept Project
+                  </button>
+                  <button 
+                    className="btn btn-danger" 
+                    onClick={() => handleReject(project.id)}
+                  >
+                    Reject Project
+                  </button>
                 </div>
               </div>
             </div>
@@ -233,13 +241,19 @@ const CreatorDashboard = () => {
           {activeProjects.map(project => (
             <div key={project.id} className="project-card">
               <div className="project-header">
-                <h3>Project #{project.id}</h3>
+                <h3>{project.title || `Project #${project.id}`}</h3>
                 <span className="status-badge active">In Progress</span>
               </div>
               
               <div className="project-body">
                 <p><strong>Client:</strong> {project.client}</p>
                 <p><strong>Amount:</strong> {project.amount} ETH</p>
+                {project.description && (
+                  <p><strong>Description:</strong> {project.description}</p>
+                )}
+                {project.deadline && (
+                  <p><strong>Deadline:</strong> {new Date(project.deadline * 1000).toLocaleDateString()}</p>
+                )}
                 
                 <div className="button-group">
                   <button 
@@ -270,13 +284,19 @@ const CreatorDashboard = () => {
           {completedProjects.map(project => (
             <div key={project.id} className="project-card">
               <div className="project-header">
-                <h3>Project #{project.id}</h3>
+                <h3>{project.title || `Project #${project.id}`}</h3>
                 <span className="status-badge completed">Completed</span>
               </div>
               
               <div className="project-body">
                 <p><strong>Client:</strong> {project.client}</p>
                 <p><strong>Amount:</strong> {project.amount} ETH</p>
+                {project.description && (
+                  <p><strong>Description:</strong> {project.description}</p>
+                )}
+                {project.deadline && (
+                  <p><strong>Deadline:</strong> {new Date(project.deadline * 1000).toLocaleDateString()}</p>
+                )}
               </div>
             </div>
           ))}

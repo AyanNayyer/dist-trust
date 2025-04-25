@@ -1369,3 +1369,111 @@ body {
     flex-direction: column;
   }
 }
+/* Reputation styles */
+.reputation-card {
+  background-color: #f7fafc;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.reputation-stat {
+  margin-bottom: 12px;
+}
+
+.stat-label {
+  font-size: 14px;
+  color: #4a5568;
+  margin-bottom: 4px;
+}
+
+.stat-number {
+  font-size: 24px;
+  font-weight: bold;
+  color: #2d3748;
+}
+
+.rating-stars {
+  display: flex;
+  gap: 4px;
+  margin-top: 8px;
+}
+
+.star {
+  font-size: 24px;
+  color: #cbd5e0;
+}
+
+.star.filled {
+  color: #f6e05e;
+}
+
+.rating-stars-input .star {
+  cursor: pointer;
+  transition: transform 0.1s;
+}
+
+.rating-stars-input .star:hover {
+  transform: scale(1.2);
+}
+
+.rating-message {
+  margin-top: 8px;
+  font-size: 14px;
+  color: #4a5568;
+}
+.wallet-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.wallet-connected {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.wallet-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.network-badge {
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.8rem;
+}
+
+.hedera-badge {
+  background-color: #9c27b0;
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.other-network-badge {
+  background-color: #2196f3;
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.btn-switch-network {
+  background-color: #9c27b0;
+  color: white;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.btn-switch-network:hover {
+  background-color: #7b1fa2;
+}
+
+.btn-switch-network:disabled {
+  background-color: #e1bee7;
+  cursor: not-allowed;
+}
+

@@ -8,10 +8,11 @@ import RatingSubmitter from '../components/reputation/RatingSubmitter';
 const Dashboard = () => {
   const { isConnected, account } = useWallet();
   const { getRatingDetails, loading: ratingLoading } = useReputation();
-  const { getProject } = useEscrow();
+  const { getProject, getProjectsCount } = useEscrow();
   const [ratingDetails, setRatingDetails] = useState(null);
-  const [projects, setProjects] = useState([]);
+  const [projects, setProjects] = useState({ pending: [], active: [], completed: [] });
   const [loading, setLoading] = useState(false);
+  const [projectsLoaded, setProjectsLoaded] = useState(false);
 
   useEffect(() => {
     const loadRating = async () => {
@@ -25,28 +26,38 @@ const Dashboard = () => {
   }, [account, getRatingDetails]);
 
   useEffect(() => {
+    // Skip if already loaded or no account
+    if (projectsLoaded || !account) return;
+    
     const loadProjects = async () => {
-      if (!account) return;
-      
       setLoading(true);
       try {
         const pendingProjects = [];
         const activeProjects = [];
         const completedProjects = [];
         
-        // Try to fetch the first 20 projects
-        for (let i = 0; i < 20; i++) {
+        // Get actual count instead of hardcoded 20
+        const count = await getProjectsCount();
+        console.log("Total projects count:", count);
+        
+        // Only loop through existing projects
+        for (let i = 0; i < count; i++) {
           try {
+            console.log(`Fetching project ${i}...`);
             const project = await getProject(i);
-            if (!project) continue;
+            
+            if (!project) {
+              console.log(`Project ${i} is null, skipping`);
+              continue;
+            }
             
             // Only include projects where this account is the client
             if (project.client.toLowerCase() === account.toLowerCase()) {
               if (project.status === 0) { // NotStarted
                 pendingProjects.push({ id: i, ...project });
-              } else if (project.status === 1) { // InProgress
+              } else if (project.status === 1 || project.status === 3) { // InProgress
                 activeProjects.push({ id: i, ...project });
-              } else if (project.status === 2) { // Completed
+              } else if (project.status === 2 || project.status === 4) { // Completed
                 completedProjects.push({ id: i, ...project });
               }
             }
@@ -55,11 +66,15 @@ const Dashboard = () => {
           }
         }
         
+        console.log("Projects found:", { pending: pendingProjects, active: activeProjects, completed: completedProjects });
         setProjects({
           pending: pendingProjects,
           active: activeProjects,
           completed: completedProjects
         });
+        
+        // Mark as loaded to prevent re-fetching
+        setProjectsLoaded(true);
       } catch (err) {
         console.error("Error loading projects:", err);
       } finally {
@@ -68,7 +83,11 @@ const Dashboard = () => {
     };
     
     loadProjects();
-  }, [account, getProject]);
+  }, [account, getProject, getProjectsCount, projectsLoaded]);
+  
+  const handleRefresh = () => {
+    setProjectsLoaded(false); // This will trigger the useEffect to run again
+  };
   
   const handleRatingSubmitted = () => {
     // Refresh ratings after submission
@@ -95,6 +114,16 @@ const Dashboard = () => {
         <div className="wallet-info">
           <p className="wallet-label">Your Wallet Address:</p>
           <p className="wallet-address">{account}</p>
+        </div>
+        
+        <div className="dashboard-actions">
+          <button 
+            className="btn btn-primary" 
+            onClick={handleRefresh} 
+            disabled={loading}
+          >
+            {loading ? 'Loading...' : 'Refresh Projects'}
+          </button>
         </div>
         
         {/* Reputation Section */}

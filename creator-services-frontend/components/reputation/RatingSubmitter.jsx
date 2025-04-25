@@ -1,5 +1,5 @@
 // src/components/reputation/RatingSubmitter.jsx
-import { useState } from 'react';
+import React, { useState, useEffect } from 'react'; // Add useEffect import
 import { useReputation } from '../../hooks/useReputation';
 
 const RatingSubmitter = ({ providerAddress, onRatingSubmitted }) => {

@@ -10,8 +10,7 @@ export const useReputation = () => {
 
   const getRatingDetails = useCallback(async (providerAddress: string) => {
     if (!signer) {
-      setError('Wallet not connected');
-      return null;
+      return { average: null, total: 0, count: 0 };
     }
     
     setLoading(true);
@@ -24,7 +23,7 @@ export const useReputation = () => {
     } catch (err: any) {
       console.error('Error getting rating details:', err);
       setError(err.message || 'Failed to get rating details');
-      return null;
+      return { average: null, total: 0, count: 0 };
     } finally {
       setLoading(false);
     }
