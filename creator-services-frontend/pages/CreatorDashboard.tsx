@@ -28,6 +28,15 @@ const CreatorDashboard = () => {
     return network === 'hedera-testnet' || network === 'hedera-mainnet' ? 'HBAR' : 'ETH';
   };
 
+  // Format amount based on network - this is the key function to fix HBAR display
+  const formatAmount = (amount) => {
+    if (network === 'hedera-testnet' || network === 'hedera-mainnet') {
+      // For Hedera, multiply by 10^10 to adjust from 18 to 8 decimal places
+      return (parseFloat(amount) * Math.pow(10, 10)).toString();
+    }
+    return amount;
+  };
+
   useEffect(() => {
     // Skip if already loaded or no account
     if (projectsLoaded || !account) return;
@@ -164,7 +173,7 @@ const CreatorDashboard = () => {
       
       <div className="dashboard-actions">
         <button 
-          className="btn btn-primary" 
+          className="btn btn-primary"
           onClick={handleRefresh} 
           disabled={loading}
         >
@@ -205,7 +214,7 @@ const CreatorDashboard = () => {
               </div>
               <div className="project-body">
                 <p><strong>Client:</strong> {project.client}</p>
-                <p><strong>Proposed Amount:</strong> {project.amount} {currencySymbol}</p>
+                <p><strong>Proposed Amount:</strong> {formatAmount(project.amount)} {currencySymbol}</p>
                 {project.description && (
                   <p><strong>Description:</strong> {project.description}</p>
                 )}
@@ -254,7 +263,7 @@ const CreatorDashboard = () => {
               
               <div className="project-body">
                 <p><strong>Client:</strong> {project.client}</p>
-                <p><strong>Amount:</strong> {project.amount} {currencySymbol}</p>
+                <p><strong>Amount:</strong> {formatAmount(project.amount)} {currencySymbol}</p>
                 {project.description && (
                   <p><strong>Description:</strong> {project.description}</p>
                 )}
@@ -297,7 +306,7 @@ const CreatorDashboard = () => {
               
               <div className="project-body">
                 <p><strong>Client:</strong> {project.client}</p>
-                <p><strong>Amount:</strong> {project.amount} {currencySymbol}</p>
+                <p><strong>Amount:</strong> {formatAmount(project.amount)} {currencySymbol}</p>
                 {project.description && (
                   <p><strong>Description:</strong> {project.description}</p>
                 )}

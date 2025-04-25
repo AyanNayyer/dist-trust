@@ -1,5 +1,5 @@
 import React from 'react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useWallet } from '../../contexts/WalletContext';
 
 // Categories for the dropdown
@@ -41,10 +41,12 @@ const useIdentity = () => {
   return { identity, createIdentity, isCreatingIdentity, verifyIdentity, isVerifyingIdentity };
 };
 
+const PROFILE_STORAGE_KEY = "creator_profile";
+
 const ProfileForm = () => {
-  const { isConnected } = useWallet();
+  const { isConnected, account } = useWallet();
   const { identity, createIdentity, isCreatingIdentity, verifyIdentity, isVerifyingIdentity } = useIdentity();
-  
+
   const [formData, setFormData] = useState({
     name: '',
     title: '',
@@ -60,6 +62,14 @@ const ProfileForm = () => {
     description: '', 
     status: '' 
   });
+
+  // Load profile from localStorage on mount
+  useEffect(() => {
+    if (account) {
+      const saved = localStorage.getItem(`${PROFILE_STORAGE_KEY}_${account}`);
+      if (saved) setFormData(JSON.parse(saved));
+    }
+  }, [account]);
 
   const showToast = (title, description, status) => {
     setToast({ show: true, title, description, status });
@@ -110,7 +120,6 @@ const ProfileForm = () => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    
     if (!identity.did) {
       showToast(
         'Identity Required',
@@ -119,10 +128,10 @@ const ProfileForm = () => {
       );
       return;
     }
-    
-    // In a real implementation, this would save profile data to a database or IPFS
-    console.log('Submitting profile data:', { ...formData, did: identity.did });
-    
+    // Save to localStorage
+    if (account) {
+      localStorage.setItem(`${PROFILE_STORAGE_KEY}_${account}`, JSON.stringify(formData));
+    }
     showToast(
       'Profile Saved',
       'Your creator profile has been saved successfully.',
