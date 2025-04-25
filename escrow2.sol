@@ -1,106 +1,85 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "./reputation2.sol"; // Import Reputation contract
+contract ProjectManager {
+    enum ProjectStatus { Pending, Approved, Rejected, InProgress, Completed }
 
-contract ProjectEscrow {
-    Reputation public reputationContract; // Reference to Reputation
-    address public client;
-    address public creator;
-    uint public amount;
-    bool public projectStarted;
-    bool public projectCompleted;
-    bool public clientApprovedCompletion;
-    bool public escrowAllocated;
-    
-    enum ProjectStatus { NotStarted, InProgress, Completed, Scrapped, Disputed }
-    ProjectStatus public status;
-
-    event ProjectSubmitted(address indexed client, address indexed creator, uint amount);
-    event EscrowAllocated(address indexed client, uint amount);
-    event ProjectStarted(address indexed creator);
-    event ProjectCompleted(address indexed creator);
-    event ClientApprovalCompletion(address indexed client, bool approved);
-    event EscrowReleased(address indexed creator, uint amount);
-    event EscrowRefunded(address indexed client, uint amount);
-    event ProjectScrapped();
-    event DisputeInitiated(address indexed client, address indexed creator);
-
-    modifier onlyClient() {
-        require(msg.sender == client, "Only client can call this");
-        _;
+    struct Project {
+        address client;
+        address creator;
+        uint256 amount;
+        string title;
+        string description;
+        uint256 deadline;
+        ProjectStatus status;
     }
 
-    modifier onlyCreator() {
-        require(msg.sender == creator, "Only creator can call this");
-        _;
+    Project[] public projects;
+
+    event ProjectCreated(uint256 indexed projectId, address indexed client, address indexed creator, uint256 amount, string title, string description, uint256 deadline);
+    event ProjectApproved(uint256 indexed projectId);
+    event ProjectRejected(uint256 indexed projectId);
+
+    function createProject(
+        address _creator,
+        string calldata _title,
+        string calldata _description,
+        uint256 _deadline
+    ) external payable returns (uint256) {
+        require(msg.value > 0, "Amount must be greater than zero");
+        projects.push(Project({
+            client: msg.sender,
+            creator: _creator,
+            amount: msg.value,
+            title: _title,
+            description: _description,
+            deadline: _deadline,
+            status: ProjectStatus.Pending
+        }));
+        uint256 projectId = projects.length - 1;
+        emit ProjectCreated(projectId, msg.sender, _creator, msg.value, _title, _description, _deadline);
+        return projectId;
     }
 
-
-    constructor(address _creator, uint _amount, address _reputationContract) {
-        require(_creator != address(0), "Creator address required");
-        require(_amount > 0, "Amount must be > 0");
-        client = msg.sender;
-        creator = _creator;
-        amount = _amount;
-        reputationContract = Reputation(_reputationContract); // Initialize Reputation
-        status = ProjectStatus.NotStarted;
-        emit ProjectSubmitted(client, creator, amount);
+    function approveProject(uint256 _projectId) external {
+        Project storage project = projects[_projectId];
+        require(msg.sender == project.creator, "Only creator can approve");
+        require(project.status == ProjectStatus.Pending, "Project not pending");
+        project.status = ProjectStatus.Approved;
+        emit ProjectApproved(_projectId);
     }
 
-
-    function depositEscrow() public payable onlyClient {
-        require(status == ProjectStatus.NotStarted, "Project already started or scrapped");
-        require(msg.value == amount, "Deposit must be equal to the agreed amount");
-        escrowAllocated = true;
-        emit EscrowAllocated(msg.sender, amount);
+    function rejectProject(uint256 _projectId) external {
+        Project storage project = projects[_projectId];
+        require(msg.sender == project.creator, "Only creator can reject");
+        require(project.status == ProjectStatus.Pending, "Project not pending");
+        project.status = ProjectStatus.Rejected;
+        payable(project.client).transfer(project.amount);
+        emit ProjectRejected(_projectId);
     }
 
-    function startProject() public onlyCreator {
-        require(escrowAllocated, "Escrow not funded");
-        require(status == ProjectStatus.NotStarted, "Project already started");
-        projectStarted = true;
-        status = ProjectStatus.InProgress;
-        
-        // Mark interaction in Reputation contract
-        reputationContract.markInteraction(client, creator); 
-        emit ProjectStarted(msg.sender);
+    function getProject(uint256 _projectId) external view returns (
+        address client,
+        address creator,
+        uint256 amount,
+        string memory title,
+        string memory description,
+        uint256 deadline,
+        ProjectStatus status
+    ) {
+        Project storage project = projects[_projectId];
+        return (
+            project.client,
+            project.creator,
+            project.amount,
+            project.title,
+            project.description,
+            project.deadline,
+            project.status
+        );
     }
 
-
-    // Creator marks project as completed
-    function markProjectCompleted() public onlyCreator {
-        require(projectStarted, "Project not started yet");
-        require(status == ProjectStatus.InProgress, "Project not in progress");
-        projectCompleted = true;
-        status = ProjectStatus.Completed;
-        emit ProjectCompleted(msg.sender);
+    function getProjectsCount() external view returns (uint256) {
+        return projects.length;
     }
-
-    // Client approves or disputes the completed project
-    function clientApproveCompletion(bool approval) public onlyClient {
-        require(projectCompleted, "Project not completed yet");
-        require(status == ProjectStatus.Completed, "Project not in completed state");
-        clientApprovedCompletion = approval;
-        emit ClientApprovalCompletion(msg.sender, approval);
-        if (approval) {
-            payable(creator).transfer(amount);
-            escrowAllocated = false;
-            emit EscrowReleased(creator, amount);
-        } else {
-            payable(client).transfer(amount);
-            escrowAllocated = false;
-            status = ProjectStatus.Scrapped;
-            emit EscrowRefunded(client, amount);
-            emit ProjectScrapped();
-            _initiateDispute();
-        }
-    }
-
-    function _initiateDispute() internal {
-        status = ProjectStatus.Disputed;
-        emit DisputeInitiated(client, creator);
-    }
-
-    receive() external payable {}
 }
