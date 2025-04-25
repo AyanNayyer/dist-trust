@@ -13,7 +13,7 @@ const ProjectStatus = {
 };
 
 const CreatorDashboard = () => {
-  const { account, isConnected } = useWallet();
+  const { account, isConnected, network } = useWallet();
   const { getProject, getProjectsCount, creatorApproval, markProjectCompleted } = useEscrow();
 
   const [pendingProjects, setPendingProjects] = useState([]);
@@ -22,6 +22,11 @@ const CreatorDashboard = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [projectsLoaded, setProjectsLoaded] = useState(false);
+
+  // Determine currency symbol based on network
+  const getCurrencySymbol = () => {
+    return network === 'hedera-testnet' || network === 'hedera-mainnet' ? 'HBAR' : 'ETH';
+  };
 
   useEffect(() => {
     // Skip if already loaded or no account
@@ -151,6 +156,8 @@ const CreatorDashboard = () => {
     );
   }
 
+  const currencySymbol = getCurrencySymbol();
+
   return (
     <div className="dashboard-container">
       <h1 className="dashboard-title">Creator Dashboard</h1>
@@ -198,7 +205,7 @@ const CreatorDashboard = () => {
               </div>
               <div className="project-body">
                 <p><strong>Client:</strong> {project.client}</p>
-                <p><strong>Proposed Amount:</strong> {project.amount} ETH</p>
+                <p><strong>Proposed Amount:</strong> {project.amount} {currencySymbol}</p>
                 {project.description && (
                   <p><strong>Description:</strong> {project.description}</p>
                 )}
@@ -247,7 +254,7 @@ const CreatorDashboard = () => {
               
               <div className="project-body">
                 <p><strong>Client:</strong> {project.client}</p>
-                <p><strong>Amount:</strong> {project.amount} ETH</p>
+                <p><strong>Amount:</strong> {project.amount} {currencySymbol}</p>
                 {project.description && (
                   <p><strong>Description:</strong> {project.description}</p>
                 )}
@@ -290,7 +297,7 @@ const CreatorDashboard = () => {
               
               <div className="project-body">
                 <p><strong>Client:</strong> {project.client}</p>
-                <p><strong>Amount:</strong> {project.amount} ETH</p>
+                <p><strong>Amount:</strong> {project.amount} {currencySymbol}</p>
                 {project.description && (
                   <p><strong>Description:</strong> {project.description}</p>
                 )}

@@ -97,7 +97,7 @@ const CreateService = () => {
       )}
       
       <div className="wallet-info">
-        <p><strong>Your Balance:</strong> {balance} ETH</p>
+        <p><strong>Your Balance:</strong> {balance} HBAR</p>
       </div>
       
       <form onSubmit={handleSubmit} className="service-form">
@@ -113,11 +113,11 @@ const CreateService = () => {
             placeholder="0x..."
             required
           />
-          <div className="form-help">Ethereum address of the service provider</div>
+          <div className="form-help">Wallet address of the service provider</div>
         </div>
         
         <div className="form-group">
-          <label htmlFor="amount">Service Amount (ETH) *</label>
+          <label htmlFor="amount">Service Amount (HBAR) *</label>
           <input
             type="number"
             id="amount"
@@ -125,9 +125,9 @@ const CreateService = () => {
             value={formData.amount}
             onChange={handleChange}
             className="form-input"
-            placeholder="0.1"
-            step="0.01"
-            min="0"
+            placeholder="5"
+            step="1"
+            min="1"
             required
           />
           <div className="form-help">Amount to be held in escrow</div>

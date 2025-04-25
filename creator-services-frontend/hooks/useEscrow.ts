@@ -3,7 +3,7 @@ import { useState, useCallback } from 'react';
 import { ethers } from 'ethers';
 import { useWallet } from '../contexts/WalletContext';
 
-const PROJECT_MANAGER_ADDRESS = "0x61a78677B65e325221F322F5b5E7843742dcC6aF";
+const PROJECT_MANAGER_ADDRESS = "0xEDee3CE33063b5BeFc38584475093Ec88eF51305";
 
 const PROJECT_MANAGER_ABI = [
   "event ProjectCreated(uint256 indexed projectId, address indexed client, address indexed creator, uint256 amount, string title, string description, uint256 deadline)",
