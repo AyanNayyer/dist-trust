@@ -1,22 +1,21 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
-import "./reputation2.sol";
+
 contract ProjectEscrow {
     // State Variables
-    Reputation public reputationContract;
     address public client;
     address public creator;
     uint public amount;
-    bool public creatorApproved;
-    bool public clientApprovedAmount;
     bool public projectStarted;
     bool public projectCompleted;
     bool public clientApprovedCompletion;
     bool public escrowAllocated;
+
+    enum ProjectStatus { NotStarted, InProgress, Completed, Scrapped, Disputed }
+    ProjectStatus public status;
+
     // Events
-    event ProjectSubmitted(address indexed client, address indexed creator);
-    event CreatorApproval(address indexed creator, bool approved, uint amount);
-    event ClientApprovalAmount(address indexed client, bool approved);
+    event ProjectSubmitted(address indexed client, address indexed creator, uint amount);
     event EscrowAllocated(address indexed client, uint amount);
     event ProjectStarted(address indexed creator);
     event ProjectCompleted(address indexed creator);
@@ -25,9 +24,6 @@ contract ProjectEscrow {
     event EscrowRefunded(address indexed client, uint amount);
     event ProjectScrapped();
     event DisputeInitiated(address indexed client, address indexed creator);
-
-    enum ProjectStatus { NotStarted, InProgress, Completed, Scrapped, Disputed }
-    ProjectStatus public status;
 
     modifier onlyClient() {
         require(msg.sender == client, "Only client can call this");
@@ -39,64 +35,46 @@ contract ProjectEscrow {
         _;
     }
 
-    constructor(address _creator, address _reputationContract) {
+    constructor(address _creator, uint _amount) {
+        require(_creator != address(0), "Creator address required");
+        require(_amount > 0, "Amount must be greater than 0");
         client = msg.sender;
         creator = _creator;
+        amount = _amount;
         status = ProjectStatus.NotStarted;
-        reputationContract = Reputation(_reputationContract);
-        emit ProjectSubmitted(client, creator);
+        emit ProjectSubmitted(client, creator, amount);
     }
 
-    // Step 2: Creator sends approval or disapproval
-    function creatorApproval(bool approval, uint _amount) public onlyCreator {
-        require(status == ProjectStatus.NotStarted, "Project already started or scrapped");
-        creatorApproved = approval;
-        emit CreatorApproval(msg.sender, approval, _amount);
-        if (approval) {
-            amount = _amount;
-            // No need to check creator's balance!
-        } else {
-            status = ProjectStatus.Scrapped;
-            emit ProjectScrapped();
-        }
-    }
-
-    //Client approves amount
-    function clientApproveAmount(bool approval) public onlyClient {
-        require(creatorApproved, "Creator has not approved");
-        require(status == ProjectStatus.NotStarted, "Project already started or scrapped");
-        clientApprovedAmount = approval;
-        emit ClientApprovalAmount(msg.sender, approval);
-        if (approval) {
-            require(address(this).balance >= amount, "Escrow does not have enough funds");
-            reputationContract.markInteraction(client, creator);
-            escrowAllocated = true;
-            emit EscrowAllocated(msg.sender, amount);
-            projectStarted = true;
-            status = ProjectStatus.InProgress;
-            emit ProjectStarted(creator);
-        } else {
-            status = ProjectStatus.Scrapped;
-            emit ProjectScrapped();
-        }
-    }
-
-    //Deposit funds in escrow
+    // Client deposits funds in escrow
     function depositEscrow() public payable onlyClient {
+        require(status == ProjectStatus.NotStarted, "Project already started or scrapped");
         require(msg.value == amount, "Deposit must be equal to the agreed amount");
+        escrowAllocated = true;
+        emit EscrowAllocated(msg.sender, amount);
     }
 
-    //Mark project completed by creator
+    // Creator starts the project
+    function startProject() public onlyCreator {
+        require(escrowAllocated, "Escrow not funded yet");
+        require(status == ProjectStatus.NotStarted, "Project already started or scrapped");
+        projectStarted = true;
+        status = ProjectStatus.InProgress;
+        emit ProjectStarted(msg.sender);
+    }
+
+    // Creator marks project as completed
     function markProjectCompleted() public onlyCreator {
         require(projectStarted, "Project not started yet");
+        require(status == ProjectStatus.InProgress, "Project not in progress");
         projectCompleted = true;
         status = ProjectStatus.Completed;
         emit ProjectCompleted(msg.sender);
     }
 
-    //Client Approve the project
+    // Client approves or disputes the completed project
     function clientApproveCompletion(bool approval) public onlyClient {
         require(projectCompleted, "Project not completed yet");
+        require(status == ProjectStatus.Completed, "Project not in completed state");
         clientApprovedCompletion = approval;
         emit ClientApprovalCompletion(msg.sender, approval);
         if (approval) {
@@ -109,9 +87,14 @@ contract ProjectEscrow {
             status = ProjectStatus.Scrapped;
             emit EscrowRefunded(client, amount);
             emit ProjectScrapped();
+            _initiateDispute();
         }
     }
 
+    function _initiateDispute() internal {
+        status = ProjectStatus.Disputed;
+        emit DisputeInitiated(client, creator);
+    }
 
     receive() external payable {}
 }
