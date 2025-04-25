@@ -1,49 +1,65 @@
 import { ethers } from 'ethers';
 
+// ABI for your ProjectEscrow contract
 const ESCROW_ABI = [
-  "function createProject(address payable _provider) external payable",
-  "function releaseFunds(uint256 _projectId) external",
-  "function getProject(uint256 _projectId) external view returns (address client, address provider, uint256 amount, bool status)",
-  "event ProjectCreated(uint256 indexed projectId, address client, address provider, uint256 amount)",
-  "event ProjectCompleted(uint256 indexed projectId)"
+  "function client() external view returns (address)",
+  "function creator() external view returns (address)",
+  "function amount() external view returns (uint256)",
+  "function status() external view returns (uint8)",
+  "function depositEscrow() external payable",
+  "function startProject() external",
+  "function markProjectCompleted() external",
+  "function clientApproveCompletion(bool approval) external",
+  "event ProjectSubmitted(address indexed client, address indexed creator, uint amount)",
+  "event EscrowAllocated(address indexed client, uint amount)",
+  "event ProjectStarted(address indexed creator)",
+  "event ProjectCompleted(address indexed creator)",
+  "event ClientApprovalCompletion(address indexed client, bool approved)",
+  "event EscrowReleased(address indexed creator, uint amount)",
+  "event EscrowRefunded(address indexed client, uint amount)"
 ];
 
-const ESCROW_ADDRESS = "YOUR_DEPLOYED_ESCROW_ADDRESS";
+const ESCROW_ADDRESS = import.meta.env.VITE_ESCROW_ADDRESS;
 
 export class EscrowContract {
   private contract: ethers.Contract;
-  
-  constructor(signerOrProvider: ethers.Signer | ethers.providers.Provider) {
-    this.contract = new ethers.Contract(ESCROW_ADDRESS, ESCROW_ABI, signerOrProvider);
+
+  constructor(signerOrProvider: ethers.Signer | ethers.providers.Provider, contractAddress: string) {
+    this.contract = new ethers.Contract(contractAddress, ESCROW_ABI, signerOrProvider);
   }
-  
-  async createProject(providerAddress: string, amount: string): Promise<number> {
-    const tx = await this.contract.createProject(providerAddress, {
-      value: ethers.utils.parseEther(amount)
-    });
-    const receipt = await tx.wait();
-    
-    const event = receipt.events?.find((e: any) => e.event === 'ProjectCreated');
-    return event.args.projectId.toNumber();
-  }
-  
-  async releaseFunds(projectId: number): Promise<void> {
-    const tx = await this.contract.releaseFunds(projectId);
-    await tx.wait();
-  }
-  
-  async getProject(projectId: number): Promise<{
-    client: string;
-    provider: string;
-    amount: string;
-    status: boolean;
-  }> {
-    const [client, provider, amount, status] = await this.contract.getProject(projectId);
+
+  async getDetails() {
+    const [client, creator, amount, status] = await Promise.all([
+      this.contract.client(),
+      this.contract.creator(),
+      this.contract.amount(),
+      this.contract.status(),
+    ]);
     return {
       client,
-      provider,
+      creator,
       amount: ethers.utils.formatEther(amount),
-      status
+      status: Number(status),
     };
+  }
+
+  async depositEscrow(amount: string) {
+    const tx = await this.contract.depositEscrow({ value: ethers.utils.parseEther(amount) });
+    return tx.wait();
+  }
+
+  async startProject() {
+    const tx = await this.contract.startProject();
+    return tx.wait();
+  }
+
+  async markProjectCompleted() {
+    const tx = await this.contract.markProjectCompleted();
+    return tx.wait();
+  }
+
+  async clientApproveCompletion(approval: boolean) {
+    const tx = await this.contract.clientApproveCompletion(approval);
+    return tx.wait();
   }
 }

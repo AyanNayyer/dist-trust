@@ -6,6 +6,7 @@ import Dashboard from '../pages/Dashboard';
 import Profile from '../pages/Profile';
 import CreateService from '../pages/CreateService';
 import NotFound from '../pages/NotFound';
+import CreatorDashboard from '../pages/CreatorDashboard';
 import './index.css';
 
 function App() {
@@ -20,6 +21,7 @@ function App() {
             <Route path="/profile" element={<Profile />} />
             <Route path="/create-service" element={<CreateService />} />
             <Route path="*" element={<NotFound />} />
+            <Route path="/creator-dashboard" element={<CreatorDashboard />} />
           </Routes>
         </main>
       </Router>
