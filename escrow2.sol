@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
-
+import "./reputation2.sol";
 contract ProjectEscrow {
     // State Variables
+    Reputation public reputationContract;
     address public client;
     address public creator;
     uint public amount;
@@ -23,8 +24,9 @@ contract ProjectEscrow {
     event EscrowReleased(address indexed creator, uint amount);
     event EscrowRefunded(address indexed client, uint amount);
     event ProjectScrapped();
+    event DisputeInitiated(address indexed client, address indexed creator);
 
-    enum ProjectStatus { NotStarted, InProgress, Completed, Scrapped }
+    enum ProjectStatus { NotStarted, InProgress, Completed, Scrapped, Disputed }
     ProjectStatus public status;
 
     modifier onlyClient() {
@@ -37,10 +39,11 @@ contract ProjectEscrow {
         _;
     }
 
-    constructor(address _creator) {
+    constructor(address _creator, address _reputationContract) {
         client = msg.sender;
         creator = _creator;
         status = ProjectStatus.NotStarted;
+        reputationContract = Reputation(_reputationContract);
         emit ProjectSubmitted(client, creator);
     }
 
@@ -66,6 +69,7 @@ contract ProjectEscrow {
         emit ClientApprovalAmount(msg.sender, approval);
         if (approval) {
             require(address(this).balance >= amount, "Escrow does not have enough funds");
+            reputationContract.markInteraction(client, creator);
             escrowAllocated = true;
             emit EscrowAllocated(msg.sender, amount);
             projectStarted = true;
@@ -107,6 +111,7 @@ contract ProjectEscrow {
             emit ProjectScrapped();
         }
     }
+
 
     receive() external payable {}
 }
