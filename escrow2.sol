@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+import "./reputation2.sol"; // Import Reputation contract
+
 contract ProjectEscrow {
-    // State Variables
+    Reputation public reputationContract; // Reference to Reputation
     address public client;
     address public creator;
     uint public amount;
@@ -10,11 +12,10 @@ contract ProjectEscrow {
     bool public projectCompleted;
     bool public clientApprovedCompletion;
     bool public escrowAllocated;
-
+    
     enum ProjectStatus { NotStarted, InProgress, Completed, Scrapped, Disputed }
     ProjectStatus public status;
 
-    // Events
     event ProjectSubmitted(address indexed client, address indexed creator, uint amount);
     event EscrowAllocated(address indexed client, uint amount);
     event ProjectStarted(address indexed creator);
@@ -35,17 +36,19 @@ contract ProjectEscrow {
         _;
     }
 
-    constructor(address _creator, uint _amount) {
+
+    constructor(address _creator, uint _amount, address _reputationContract) {
         require(_creator != address(0), "Creator address required");
-        require(_amount > 0, "Amount must be greater than 0");
+        require(_amount > 0, "Amount must be > 0");
         client = msg.sender;
         creator = _creator;
         amount = _amount;
+        reputationContract = Reputation(_reputationContract); // Initialize Reputation
         status = ProjectStatus.NotStarted;
         emit ProjectSubmitted(client, creator, amount);
     }
 
-    // Client deposits funds in escrow
+
     function depositEscrow() public payable onlyClient {
         require(status == ProjectStatus.NotStarted, "Project already started or scrapped");
         require(msg.value == amount, "Deposit must be equal to the agreed amount");
@@ -53,14 +56,17 @@ contract ProjectEscrow {
         emit EscrowAllocated(msg.sender, amount);
     }
 
-    // Creator starts the project
     function startProject() public onlyCreator {
-        require(escrowAllocated, "Escrow not funded yet");
-        require(status == ProjectStatus.NotStarted, "Project already started or scrapped");
+        require(escrowAllocated, "Escrow not funded");
+        require(status == ProjectStatus.NotStarted, "Project already started");
         projectStarted = true;
         status = ProjectStatus.InProgress;
+        
+        // Mark interaction in Reputation contract
+        reputationContract.markInteraction(client, creator); 
         emit ProjectStarted(msg.sender);
     }
+
 
     // Creator marks project as completed
     function markProjectCompleted() public onlyCreator {
