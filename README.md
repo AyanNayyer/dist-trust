@@ -30,9 +30,9 @@ Access to Ethereum Sepolia testnet
 
 ### Clone the repository
 
-git clone https://github.com/yourusername/creator-services-platform.git
+git clone https://github.com/yourusername/dist-trust.git
 
-cd creator-services-platform
+cd dist-trust
 
 ### Install dependencies
 
